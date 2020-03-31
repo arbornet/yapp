@@ -1,0 +1,520 @@
+#!/bin/sh
+#
+# Installation script for YAPP 3.0
+# (c)1996 Armidale Software
+#
+# These files should have been untarred in /usr/bbs (or equivalent)
+# already.  This script should be run from there as cfadm.
+#
+
+# Find common Unix utilities
+CP=`which cp`
+CUT=`which cut`
+MKDIR=`which mkdir`
+TEST=`which test`
+
+# Determine how to suppress newline on echo command
+(echo "hi there\c" ; echo " ") >/tmp/.echotmp
+if grep c /tmp/.echotmp >/dev/null 2>&1 ; then 
+        n='-n'
+        c=''
+else 
+        n=''    
+        c='\c'
+fi
+rm -f /tmp/.echotmp
+
+# Find a good install program.  We prefer a C program (faster),
+# so one script is as good as another.  But avoid the broken or
+# incompatible versions:
+# SysV /etc/install, /usr/sbin/install
+# SunOS /usr/etc/install
+# IRIX /sbin/install
+# AIX /bin/install
+# AFS /usr/afsws/bin/install, which mishandles nonexistent args
+# SVR4 /usr/ucb/install, which tries to use the nonexistent group "staff"
+# ./install, which can be erroneously created by make from ./install.sh.
+echo $n "Checking for a BSD compatible install... $c"
+if $TEST -z "$INSTALL"; then
+    IFS="${IFS=   }"; ac_save_ifs="$IFS"; IFS="${IFS}:"
+  for ac_dir in $PATH; do
+    # Account for people who put trailing slashes in PATH elements.
+    case "$ac_dir/" in
+    /|./|.//|/etc/*|/usr/sbin/*|/usr/etc/*|/sbin/*|/usr/afsws/bin/*|/usr/ucb/*)
+;;
+    *)
+      # OSF1 and SCO ODT 3.0 have their own names for install.
+      for ac_prog in ginstall installbsd scoinst install; do
+        if $TEST -f $ac_dir/$ac_prog; then
+     if $TEST $ac_prog = install &&
+            grep dspmsg $ac_dir/$ac_prog >/dev/null 2>&1; then
+       # AIX install.  It has an incompatible calling convention.
+       # OSF/1 installbsd also uses dspmsg, but is usable.
+       :
+     else
+       ac_cv_path_install="$ac_dir/$ac_prog -c"
+       break 2
+     fi
+   fi
+      done
+      ;;
+    esac
+  done
+  IFS="$ac_save_ifs"
+  if $TEST "${ac_cv_path_install+set}" = set; then
+    INSTALL="$ac_cv_path_install"
+  else
+    # As a last resort, use the slow shell script.  We don't cache a
+    # path for INSTALL within a source directory, because that will
+    # break other packages using the cache if that directory is
+    # removed, or if the path is relative.
+    INSTALL="./install-sh -c"
+  fi
+fi
+echo "$INSTALL"
+
+# Directories in which to look for yapp.conf
+ETCDIRS="/etc /usr/local/etc /usr/bbs ~cfadm"
+
+prompt () {
+
+   # Lookup old value
+   oldval=`grep "^$v:" $yappconf 2>/dev/null | $CUT -d':' -f2`
+   if $TEST "$oldval" = ""; then
+      oldval="$hint"
+   fi
+
+   if $TEST "$prtext" = ""; then
+      prtext="Enter $v"
+   fi
+   echo $n "$prtext [$oldval]: $c"
+   unset prtext
+   read val
+   if $TEST "$val" = ""; then
+      val="$oldval"
+   fi
+   if $TEST "$val" != "$def"; then
+      echo "$v:$val" >> $tempfile
+   fi
+}
+
+cppart () {
+   # First copy Unix users' partfiles
+   echo
+   echo "Copying Unix users' participation files..."
+   cat /etc/passwd | while read line
+   do 
+      who=`echo $line | $CUT -d: -f1`
+      echo " checking $who"
+      first=`echo $who | $CUT -c1`
+      second=`echo $who | $CUT -c2`
+      work=`echo $line | $CUT -d: -f6`
+      if $TEST -d $work/.cfdir; then
+         work=$work/.cfdir
+      fi
+      
+      userpartdir=$partdir/$first/$second/$who
+      dirmade=0
+      if $TEST -d $userpartdir; then
+         dirmade=1
+      fi
+      for j in $work/.*.cf $work/.cflist
+      do
+         if $TEST ! -f $j; then
+            continue
+         fi
+         if $TEST "$dirmade" = 0; then
+            echo "$MKDIR -p $userpartdir"
+            $MKDIR -p $userpartdir
+            dirmade=1
+         fi
+         echo "$CP $j $userpartdir"
+         $CP $j $userpartdir
+      done
+   done
+      
+   # Next copy Web users' partfiles
+   echo
+   echo "Copying Web users' participation files..."
+   cd $userhome
+   for first in *; do
+      cd $userhome/$first
+      for second in *; do
+         cd $userhome/$first/$second
+         for who in *; do
+            echo " checking $who"
+            work=$userhome/$first/$second/$who
+            userpartdir=$partdir/$first/$second/$who
+            dirmade=0
+            if $TEST -d $userpartdir; then
+               dirmade=1
+            fi
+            for j in $work/.*.cf $work/.cflist
+            do
+               if $TEST ! -f $j; then
+                  break
+               fi
+               if $TEST "$dirmade" = 0; then
+                  echo "$MKDIR -p $userpartdir"
+                  $MKDIR -p $userpartdir
+                  dirmade=1
+               fi
+               echo "$CP $j $userpartdir"
+               $CP $j $userpartdir
+            done
+         done
+      done
+   done
+}
+
+# Locate old yapp.conf
+echo $n "Checking for existing yapp.conf file... $c"
+ok=0
+for etcdir in $ETCDIRS
+do
+   if $TEST -f $etcdir/yapp.conf; then
+      yappconf=$etcdir/yapp.conf
+      echo "$yappconf"
+      ok=1
+      break
+   fi
+done
+if $TEST $ok -ne 1; then
+   echo "none found"
+   yappconf=./yapp.conf
+fi
+
+# Set temp file
+tempfile=/tmp/yapp.conf.$$
+if $TEST -f $tempfile; then
+   /bin/rm -f $tempfile
+fi
+
+# Set cfadm login
+prtext="Unix login to be used as bbs owner (cfadm)"
+v="cfadm";        def="cfadm";                 hint=`whoami`; prompt
+cfadm="$val"
+if $TEST "$cfadm" != "$hint"; then
+   echo 'This script must be run by that login.'
+   exit
+fi
+
+# Set usradm login
+prtext="Unix login to be used as alternate user administrator (usradm)"
+v="usradm";        def="root";                 hint="root"; prompt
+cfadm="$val"
+
+# Set sysop login
+prtext="WWW login to be used as sysop (sysop)"
+v="sysop";        def="$cfadm";                 hint="sysop"; prompt
+sysop="$val"
+
+# Set nobody login
+prtext="Unix login used by httpd to invoke programs as (nobody)"
+v="nobody";        def="nobody";                hint="nobody"; prompt
+nobody="$val"
+
+# Set YAPP paths
+v="bbsdir";       def="/usr/bbs";              hint=`pwd`; prompt
+bbsdir="$val"
+if $TEST "$bbsdir" != "$hint"; then
+   echo 'You must first untar the Yapp archive under that directory.'
+   exit
+fi
+v="wwwdir";       def="$bbsdir/www";           hint="$def"; prompt
+wwwdir=$val
+v="licensedir";   def="/usr/bbs/license";        hint="$bbsdir/license"; prompt
+licensedir=$val
+v="confdir";      def="$bbsdir/confs";          hint="$bbsdir/confs"; prompt
+confdir=$val
+v="userhome";     def="/usr/bbs/home";          hint="$wwwdir/home"; prompt
+userhome="$val"
+v="userfile";     def="/usr/bbs/etc/passwd";    hint="~/passwd"; prompt
+userfile="$val"
+v="passfile";     def="/usr/bbs/etc/.htpasswd"; hint="$bbsdir/etc/.htpasswd"; prompt
+passfile="$val"
+
+# Find sendmail program
+if $TEST -x /usr/sbin/sendmail; then
+   hint="/usr/sbin/sendmail"
+else
+   hint="/usr/lib/sendmail"
+fi
+v="sendmail";     def="/usr/lib/sendmail";     hint="$def"; prompt
+
+# Find system mail directory
+if $TEST -d /var/mail; then
+   hint="/var/mail"
+elif $TEST -d /usr/mail; then
+   hint="/usr/mail"
+else
+   hint="/usr/spool/mail"
+fi
+v="maildir";      def="/usr/spool/mail";        prompt
+
+# Find system news directory (if any)
+#v="newsdir";      def="/usr/spool/news";        hint="$def"; prompt
+
+# Set byteswap constant
+#v="byteswap";     def="1";                      hint="$def"; prompt
+
+# Allow FW to freeze linked items?
+prtext="Allow hosts to freeze items linked to other conferences (freezelinked)?"
+v="freezelinked"; def="true";                   hint="$def"; prompt
+
+# Allow users to censor/scribble in frozen items?
+prtext="Allow users to censor/scribble responses in frozen items (censorfrozen)?"
+v="censorfrozen"; def="true";                   hint="$def"; prompt
+
+# Use compressed DBM file for user information?
+prtext="Use compressed DBM file for user information (userdbm)?"
+v="userdbm"; def="false";                   hint="$def"; prompt
+
+# Allow combined web/unix accounts?
+echo
+echo "Yapp can allow a user to log in in via either Unix or the WWW and"
+echo "maintain a single set of data on what the user has previously read."
+echo "However, if such combining is used, compatibility with PicoSpan is"
+echo "lost.  If you don't run PicoSpan, just hit return.  If you do run"
+echo "PicoSpan, you should enter the word 'work'."
+echo
+prtext="Participation file directory (partdir)?"
+v="partdir"; def="work";                   hint="$bbsdir/part"; prompt
+partdir=$val
+
+# Number of spaces to pad responses and subjects with
+echo
+echo "Yapp allows authors to edit their item subjects and response text"
+echo "as long as the new text fits into the old space.  The padding option"
+echo "tells Yapp to leave extra space when entering subjects and responses"
+echo "so that there is extra leeway when editing.  Be aware that this will"
+echo "cause older Yapp binaries to display ,E at the end of responses, so"
+echo "you should make sure all binaries are upgraded before using a non-"
+echo "zero value for padding."
+echo
+prtext="Padding size (padding)?"
+v="padding"; def="0";   hint="78"; prompt
+
+# Create conflist file if none exists
+if $TEST ! -f $bbsdir/conflist; then
+   echo "Creating $bbsdir/conflist..."
+   sed -e "s;CONFDIR;$confdir;" $bbsdir/conflist.dist > $bbsdir/conflist
+fi
+
+# Create desclist file if none exists
+if $TEST ! -f $bbsdir/desclist; then
+   echo "Creating $bbsdir/desclist..."
+   $INSTALL -m 644 -o $cfadm $bbsdir/desclist.dist $bbsdir/desclist
+fi
+
+# Create maillist file if none exists
+if $TEST ! -f $bbsdir/maillist; then
+   echo "Creating $bbsdir/maillist..."
+   $INSTALL -m 644 -o $cfadm $bbsdir/maillist.dist $bbsdir/maillist
+fi
+
+# Create yapp conference configuration files if none exist
+if $TEST ! -f $confdir/yapp/config; then
+   echo "Creating $confdir/yapp/config..."
+   $INSTALL -m 644 -o $cfadm $confdir/yapp/config.dist $confdir/yapp/config
+   $INSTALL -m 644 -o $cfadm $confdir/yapp/logout.dist $confdir/yapp/logout
+   $INSTALL -m 644 -o $cfadm $confdir/yapp/htmlheader.dist $confdir/yapp/htmlheader
+fi
+
+# Install .htaccess files
+if $TEST ! -f $wwwdir/cgi-bin/restricted/.htaccess; then
+   echo "Installing .htaccess file..."
+   cat > /tmp/.htaccess << EOM
+AuthUserFile $passfile
+AuthGroupFile /dev/null
+AuthName Yapp
+AuthType Basic
+
+<Limit GET POST>
+require valid-user
+</Limit>
+EOM
+   $INSTALL -m 644 -o $cfadm /tmp/.htaccess $wwwdir/cgi-bin/restricted/.htaccess
+   rm -f /tmp/.htaccess
+fi
+
+# Install binaries
+#cp cfcreate cfdelete $bbsdir
+chmod 700 $bbsdir/bin/cfcreate $bbsdir/bin/cfdelete
+
+# Create licensedir
+echo "Checking $licensedir..."
+$MKDIR -p $licensedir
+chown $cfadm $licensedir
+chmod 755 $licensedir
+
+# Create userhome
+echo "Checking $userhome..."
+$MKDIR -p $userhome
+
+# Create partdir
+echo "Checking $partdir..."
+$MKDIR -p $partdir
+chown $cfadm $partdir
+chmod 700 $partdir
+oldpartdir=`grep "^partdir:" $yappconf 2>/dev/null | $CUT -d':' -f2`
+if $TEST "$oldpartdir" = ""; then
+   oldpartdir="work"
+fi
+
+# Create directories for userfile, passfile if needed
+$MKDIR -p `dirname $userfile`
+$MKDIR -p `dirname $passfile`
+
+# If moving to a shared participation file directory, mention copying partfiles
+if $TEST "$oldpartdir" = "work" -a "$partdir" != "work"; then
+   echo "$counter) It looks like you are changing from using user-owned participation"
+   echo "   files, to using ${cfadm}-owned participation files.  If you wish to retain"
+   echo "   existing information, any participation files under users' home "
+   echo "   directories must be placed under the new directory.  Do you want"
+   echo $n "   to have this automatically done now? [yes] $c"
+   read ans
+   if $TEST "$ans" = ""; then
+      ans="yes"
+   fi
+   ans=`echo $ans | $CUT -c1`
+   if $TEST $ans = "y" -o $ans = "Y"; then
+      cppart
+   fi
+fi
+
+# Install /etc/yapp.conf if we can
+if $INSTALL -m 644 -o $cfadm $tempfile $yappconf
+then
+   echo Successfully installed $yappconf
+fi
+
+counter=1
+
+echo
+echo "As an administrator, you now need to do the following to complete the"
+echo "installation process:"
+echo
+
+if $TEST $tempfile = "./yapp.conf"; then
+   echo "$counter) Install ./yapp.conf in one of the following places:"
+   echo "   /etc/yapp.conf"
+   echo "   /usr/local/etc/yapp.conf"
+   echo "   /usr/bbs/yapp.conf"
+   echo "   ~$cfadm/yapp.conf"
+   echo
+   counter=`expr $counter + 1`
+fi
+
+# Need to install bbs binary
+cmp /usr/local/bin/bbs $bbsdir/bin/bbs > /dev/null 2>&1
+if $TEST $? -ne 0; then
+   echo "$counter) You need to copy or link $bbsdir/bin/bbs to /usr/local/bin/yapp3.1 and /usr/local/bin/bbs"
+   echo "   It should be mode 4711, and owned by $cfadm."
+   echo
+   counter=`expr $counter + 1`
+else
+   owner=`ls -l /usr/local/bin/bbs | awk '{print $3}'`
+   if $TEST "$owner" != "$cfadm"; then
+      echo "$counter) As root: chown $cfadm /usr/local/bin/bbs"
+      echo "            chmod 4711 /usr/local/bin/bbs"
+      echo "            ln /usr/local/bin/bbs /usr/local/bin/yapp3.1"
+      echo
+      counter=`expr $counter + 1`
+   else
+      chmod 4711 /usr/local/bin/yapp3.1
+      ln -s /usr/local/bin/yapp3.1 /usr/local/bin/bbs
+   fi
+fi
+
+# Need to install webuser binary
+localsize=`ls -l /usr/local/bin/webuser 2>/dev/null | awk '{print $5}'`
+binsize=`ls -l $bbsdir/bin/webuser 2>/dev/null | awk '{print $5}'`
+if $TEST "$localsize" -ne "$binsize"; then
+   echo "$counter) You should also consider copying or linking $bbsdir/bin/webuser to "
+   echo "   /usr/local/bin/webuser, where it should be mode 4711, and owned "
+   echo "   by root.  See the webuser man page for more information."
+   echo
+   counter=`expr $counter + 1`
+else
+   owner=`ls -l /usr/local/bin/webuser 2>/dev/null | awk '{print $3}'`
+   if $TEST "$owner" != "root"; then
+      echo "$counter) You should consider installing /usr/local/bin/webuser"
+      echo "   setuid root.  See the webuser man page for more information."
+      echo "   To do this, as root: chown $root /usr/local/bin/webuser"
+      echo "                        chmod 4711 /usr/local/bin/webuser"
+      echo
+      counter=`expr $counter + 1`
+   fi
+fi
+
+# Notify about man pages
+echo "$counter) There are man pages under $bbsdir/man"
+echo "   which can be installed in a standard location."
+echo
+counter=`expr $counter + 1`
+
+# Finally, install the license
+if $TEST ! -f $licensedir/registered; then
+   echo "$counter) You need a license file installed as $licensedir/registered."
+   echo "   owned by $cfadm, mode 644.  Contact Armidale Software at:"
+   echo "      yapp@armidale.ann-arbor.mi.us"
+   echo "   to obtain a license."
+   echo
+   counter=`expr $counter + 1`
+fi
+
+echo $n "Hit [Enter] for more: $c"
+read more
+echo
+
+echo "$counter) Add html aliases:"
+echo "   ScriptAlias /yapp-bin/ /usr/bbs/www/cgi-bin/"
+echo "   Alias /yapp-icons/ /usr/bbs/www/gifs/"
+echo "   Create a normal page somewhere with links to:"
+echo "        /yapp-bin/restricted/main (Log on as registered user)"
+echo "        /yapp-bin/public/index    (View readonly conferences)"
+echo "        /yapp-bin/public/newuser  (Register as a new user)"
+echo
+counter=`expr $counter + 1`
+
+grep "^cflink:" /etc/passwd > /dev/null
+cflinkstatus=$?
+grep "^cflink:" /etc/aliases > /dev/null
+if $TEST $? -ne 0 -a $cflinkstatus -ne 0; then
+   echo "$counter) Create an email alias for 'cflink' by adding the following"
+   echo "   line to /etc/aliases:"
+   echo 'cflink: "|/usr/local/bin/bbs -i"'
+   echo
+#  echo "   Optionally create a cflink account whose home directory is"
+#  echo "   $bbsdir/cflink.  password and login shell can be splatted.  UID"
+#  echo "   must be same as $cfadm.  (Alternately set $cfadm home directory"
+#  echo "   to $bbsdir/cflink)."
+#  echo
+   counter=`expr $counter + 1`
+fi
+
+homeowner=`ls -ld $userhome | awk '{print $3}'`
+homeperms=`ls -ld $userhome | awk '{print $1}'`
+if $TEST "$homeowner" != "$nobody"; then
+   echo "$counter) As root: chown $nobody $userhome"
+   echo
+   counter=`expr $counter + 1`
+fi
+if $TEST "$homeperms" != "drwxr-xr-x"; then
+   echo "$counter) As root: chmod 755 $userhome"
+   echo
+   counter=`expr $counter + 1`
+fi
+
+# Notify about WWW sysop login
+if [ "$sysop" != "$cfadm" ]; then
+   sysopentry=`grep "^$sysop:" $passfile 2> /dev/null`
+   if $TEST $? -ne 0; then
+      echo "$counter) Create a WWW account named $sysop ASAP by going to the URL:"
+      echo "   /yapp-bin/public/newuser.  This login is able to access administration"
+      echo "   functions from the WWW."
+      counter=`expr $counter + 1`
+   fi
+fi
+

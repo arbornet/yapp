@@ -1,0 +1,85 @@
+Yapp-3.0.12 (c)1996 Armidale Software
+
+NOTE: A preliminary draft of the Administration Guide can be found in
+      admin_guide.ps.  This guide covers Installation in more detail than
+      this file does.
+
+INSTRUCTIONS FOR INSTALLING YAPP 3.0:
+
+1) Decide on what login to use to own Yapp files.  Typically, a separate
+   account, is created to own the bbs files.  We will refer to this
+   account as `cfadm'.  Access to this account is needed for a Yapp 
+   administrator to create and delete new conferences.  We will refer to 
+   anyone with access to the cfadm account as the "Yapp administrator".
+
+2) Log in as cfadm, and uncompress and untar the generic distribution and 
+   the binary distribution in the destination directory (e.g. /usr/bbs).  
+   We will herafter refer to this directory as `bbsdir'.
+
+   For example:
+   $ cd /usr/bbs
+   $ gunzip yapp.3.0.12-generic-dist.tar.gz
+   $ tar -xvf yapp.3.0.12-generic-dist.tar
+   $ gunzip yapp3.0.12-solaris-bin.tar.gz
+   $ tar -xvf yapp3.0.12-solaris-bin.tar
+
+3) While still logged in as cfadm, run the Install script from the `bbsdir' 
+   directory.  This will prompt you for a number of items and may give you
+   additional information about what needs to be done.  The default
+   value will be shown in square brackets.  If you wish to use the
+   defaults shown, you may simply hit enter at the prompts.
+      
+   For example:
+   $ ./Install
+
+   Once you have answered the questions, the Install script will
+   attempt to install the options you have requested.  Afterwards, it
+   will report any outstanding installation steps which must be performed
+   by root.
+
+4) Add an html directory alias, so that /yapp-bin/ points to
+   `bbsdir'/www/cgi-bin/    (replacing `bbsdir' with the base directory)
+   and /yapp-icons/ points to `bbsdir'/www/gifs/.
+
+   Example for NCSA or Apache httpd's srm.conf:
+
+      ScriptAlias /yapp-bin/ /usr/bbs/www/cgi-bin/
+      Alias /yapp-icons/ /usr/bbs/www/gifs/
+
+5) From whatever web page you wish to point to your Yapp BBS, you
+   should add a link to /yapp-bin/restricted/main.   If you wish
+   to allow users to browse selected conferences (marked as "readonly")
+   without authenticating, you should add a link to /yapp-bin/public/list.
+   Finally, you should add a link to /yapp-bin/public/newuser if you wish
+   for users to be able to create new Yapp accounts.
+
+   Example HTML excerpt:
+
+   <ul>
+   <li><A HREF="/yapp-bin/public/newuser">Register as a new user</A><P>
+   <li><A HREF="/yapp-bin/restricted/main">Log in as an existing user</A><P>
+   <li><A HREF="/yapp-bin/public/list">View read-only conferences</A>
+   </ul><P>
+
+6) If you want to use conferences linked to a mailing list (see the
+   Administration Guide for more information), you should create a cflink 
+   mail alias by adding the following line to /etc/aliases:
+   
+   cflink:"|/usr/local/bin/bbs -i"
+
+   Then to activate the new alias do:
+   $ newaliases
+
+7) [Solaris only]  When a script's shell is a setuid program, Solaris
+   doesn't do the setuid.  This is a problem for Yapp scripts, since
+   Yapp must run setuid cfadm.  A workaround is to make all Yapp scripts
+   in www/cgi-bin/public and www/cgi-bin/restricted setuid cfadm.
+
+8) If the sysop and cfadm logins are different, you should immediately go 
+   through the newuser process (at http://localhost/yapp-bin/public/newuser) 
+   and create the sysop web account.  This login will be able to access 
+   administration functions from the WWW.
+
+9) Once you have Yapp working, you may wish to customize the various
+   screens yourself.  Customization is covered in detail in the Administration
+   Guide.
