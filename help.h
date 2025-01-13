@@ -1,3 +1,3 @@
-/* HELP.H: @(#)help.h 1.1 93/04/22 Copyright (c)1993 thalerd */
+#pragma once
 
-int help PROTO((int argc, char **argv));
+int help(int argc, char **argv);

@@ -1,0 +1,8 @@
+#!/bin/sh
+dir=$1
+shift
+case "$dir" in
+""|".") dir="" ;;
+*) dir="$dir/" ;;
+esac
+${CXX} ${INCLUDE} -MM -MG "$@" | sed -e "s@\(.*\)\.o:@$dir\1.o $dir\1.d:@"

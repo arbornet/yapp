@@ -1,6 +1,9 @@
-/* SYSOP.H */
+#pragma once
 
-int is_sysop PROTO(());
-int cfcreate PROTO((int argc, char **argv));
-int cfdelete PROTO((int argc, char **argv));
-int upd_maillist PROTO((short security, char ** config, int idx));
+#include <string>
+#include <vector>
+
+int is_sysop(int);
+int cfcreate(int argc, char **argv);
+int cfdelete(int argc, char **argv);
+void upd_maillist(int security, const std::vector<std::string> &config, int idx);

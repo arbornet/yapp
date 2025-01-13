@@ -1,25 +1,25 @@
-/* MISC.H: @(#)misc.h 1.3 93/05/20 Copyright (c)1993 thalerd */
+#pragma once
 
-int  cluster PROTO((int argc, char **argv));
-int  date PROTO((int argc, char **argv));
-int  echo PROTO((int argc, char **argv));
-int  eval PROTO((int argc, char **argv));
-int  mail PROTO((int argc, char **argv));
-int  cd   PROTO((int argc, char **argv));
-int  do_source PROTO((int argc, char **argv));
-int  test PROTO((int argc, char **argv));
-int  do_umask PROTO((int argc, char **argv));
+int cluster(int argc, char **argv);
+int date(int argc, char **argv);
+int echo(int argc, char **argv);
+int eval(int argc, char **argv);
+int mail(int argc, char **argv);
+int cd(int argc, char **argv);
+int do_source(int argc, char **argv);
+int test(int argc, char **argv);
+int do_umask(int argc, char **argv);
 #ifdef INCLUDE_EXTRA_COMMANDS
-int  set_cfdir PROTO((int argc, char **argv));
+int set_cfdir(int argc, char **argv);
 #endif
-int  set_debug PROTO((int argc, char **argv));
-char misc_cmd_dispatch PROTO((int argc, char **argv));
-int  do_if PROTO((int argc, char **argv));
-int  do_else PROTO((int argc, char **argv));
-int  do_endif PROTO((int argc, char **argv));
-int  do_rm PROTO((int argc, char **argv));
-int  argset PROTO((int argc, char **argv));
-int  foreach PROTO((int argc, char **argv));
-int  test_if PROTO(());
-int  load_values PROTO((int argc, char **argv));
-int  save_values PROTO((int argc, char **argv));
+int set_debug(int argc, char **argv);
+char misc_cmd_dispatch(int argc, char **argv);
+int do_if(int argc, char **argv);
+int do_else(int argc, char **argv);
+int do_endif(int argc, char **argv);
+int do_rm(int argc, char **argv);
+int argset(int argc, char **argv);
+int foreach (int argc, char **argv);
+int test_if(void);
+int load_values(int argc, char **argv);
+int save_values(int argc, char **argv);

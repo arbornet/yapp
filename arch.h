@@ -1,7 +1,12 @@
-/* ARCH.H: @(#)arch.h 1.5 93/06/07 Copyright (c)1993 thalerd */
-void get_resp PROTO((FILE *fp, response_t *re, SHORT fast, SHORT num));
-void get_item PROTO((FILE *fp, SHORT n, response_t *re, sumentry_t *sum));
+#pragma once
 
-#define GR_ALL    0x0000
+#include <cstdio>
+
+#include "struct.h"
+
+void get_resp(FILE *fp, response_t *re, int fast, int num);
+void get_item(FILE *fp, int n, response_t *re, sumentry_t *sum);
+
+#define GR_ALL 0x0000
 #define GR_OFFSET 0x0001
 #define GR_HEADER 0x0002

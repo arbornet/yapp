@@ -1,34 +1,44 @@
-/* LIB.H: @(#)lib.h 1.16 93/06/07 Copyright (c)1993 thalerd */
+#pragma once
+
+#include <cstdio>
+#include <ctime>
+#include <span>
+#include <string>
+#include <string_view>
+#include <vector>
+
+#include "struct.h"
 
 /* Grab file options */
-#define GF_SILENT         0x0001
-#define GF_WORD           0x0002
-#define GF_HEADER         0x0004
-#define GF_IGNCMT         0x0008  /* ignore comment lines? */
-#define GF_NOHEADER       0x0010  /* don't require file header */
+#define GF_SILENT 0x0001
+#define GF_WORD 0x0002
+#define GF_HEADER 0x0004
+#define GF_IGNCMT 0x0008   /* ignore comment lines? */
+#define GF_NOHEADER 0x0010 /* don't require file header */
 
-char match PROTO((char *a, char *b));
-char cat PROTO((char *dir, char *file));
-char **grab_file PROTO((char *dir, char *file, CHAR silent));
-char **grab_more PROTO((FILE *fp, char *end, CHAR silent, int *endlen));
-short searcha PROTO((char *elt, char **arr, SHORT start));
-char **explode PROTO((char *str, char *sep, int mult));
-void implode PROTO((char *buff, char **arr, char *sep, SHORT start));
-char *get_password PROTO(());
-char *ngets PROTO((char *str, FILE *fp));
-char *xgets PROTO((FILE *fp, int lvl));
-assoc_t *grab_list PROTO((char *dir,char *file, int flags));
-int  get_idx      PROTO((char *elt, assoc_t *list, int size));
-void free_list PROTO((assoc_t *list));
-int  get_yes PROTO((char *pr, int err));
-char *get_date PROTO((time_t t, int sty));
-#ifndef HAVE_STRNCASECMP
-int strncasecmp PROTO((char *s1, char *s2, int n));
-#endif
-char *compress PROTO((char *str));
-char *noquote  PROTO((char *str,int x));
-void error PROTO((char *str1,char *str2));
-char *lower_case PROTO((char *str));
-char write_file PROTO((char *file, char *buff));
-char *mystrtok PROTO((char *str, char *sep));
-char more PROTO((char *dir, char *filename));
+constexpr size_t nidx = ~0z;
+
+std::string_view strim(std::string_view, const std::string_view ws = " ");
+std::string_view strimw(std::string_view);
+
+char *trim(char *str);
+bool match(const char *a, const char *b);
+bool match(const std::string_view &a, const std::string_view &b);
+bool cat(const std::string_view &dir, const std::string_view &file);
+std::vector<std::string> grab_file(const std::string_view &dir, const std::string_view &file, int flags);
+std::vector<std::string> grab_more(FILE *fp, const char *end, size_t *endlen);
+bool ngets(std::string &str, FILE *fp);
+char *xgets(FILE *fp, int lvl);
+std::vector<assoc_t> grab_list(const std::string_view &dir, const std::string_view &file, int flags);
+std::size_t get_idx(const std::string_view &elt, const std::vector<assoc_t> &list);
+const assoc_t *assoc_list_find(const std::vector<assoc_t> &vec, const std::string &key);
+bool get_yes(const std::string_view &prompt, bool dflt);
+std::string get_date(std::time_t t, int sty);
+std::string compress(const std::string_view &str);
+std::string noquote(const std::string_view &str);
+void error(const std::string_view &str1, const std::string_view &str2 = "");
+std::string &lower_case(std::string &str);
+char *lower_case(char *str);
+bool write_file(const std::string &file, const std::string_view &buff);
+bool more(const std::string_view &dir, const std::string_view &filename);
+void mkdir_all(const std::string &path, int mode);

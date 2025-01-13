@@ -1,11 +1,12 @@
-/* EDBUF.H: @(#)edbuf.h 1.5 93/06/07 Copyright (c)1993 thalerd */
-int  text_read  PROTO((int argc, char **argv));
-int  text_write PROTO((int argc, char **argv));
-int  text_edit  PROTO((int argc, char **argv));
-int  text_print PROTO((int argc, char **argv));
-int  text_clear PROTO((int argc, char **argv));
-int  text_abort PROTO((int argc, char **argv));
-int  text_done  PROTO((int argc, char **argv));
-char text_cmd_dispatch PROTO((int argc, char **argv));
-char text_loop PROTO((int new, char *label));
-char edb_cmd_dispatch PROTO((int argc, char **argv));
+#pragma once
+
+int text_read(int argc, char **argv);
+int text_write(int argc, char **argv);
+int text_edit(int argc, char **argv);
+int text_print(int argc, char **argv);
+int text_clear(int argc, char **argv);
+int text_abort(int argc, char **argv);
+int text_done(int argc, char **argv);
+char text_cmd_dispatch(int argc, char **argv);
+char text_loop(bool is_new, const char *label);
+char edb_cmd_dispatch(int argc, char **argv);

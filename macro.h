@@ -1,24 +1,32 @@
-/* MACRO.H: @(#)macro.h 1.16 93/06/07 Copyright (c)1993 thalerd */
-/* Define macro mask */
-#define DM_OK             0x0001
-#define DM_VAR            0x0002
-#define DM_PARAM          0x0004
-#define DM_RFP            0x0008
-#define DM_SUPERSANE      0x0040
-#define DM_SANE           0x0080
-#define DM_ENVAR          0x0100
-#define DM_BASIC          0x7FFF
-#define DM_CONSTANT       0x8000
+#pragma once
 
-void undef_macro PROTO((macro_t *prev));
-void undef_name  PROTO((char *name));
-char *expand PROTO((char *mac, U_SHORT mask));
-char *capexpand PROTO((char *mac, U_SHORT mask, int cap));
-int  define PROTO((int argc, char **argv));
-void def_macro PROTO((char *name, int mask, char *value));
-macro_t *find_macro PROTO((char *name, unsigned short mask));
-void undefine PROTO((unsigned short mask));
-char *conference PROTO((int cap));
-char *fairwitness PROTO((int cap));
-char *topic PROTO((int cap));
-char *subject PROTO((int cap));
+#include <string>
+#include <string_view>
+
+#include "struct.h"
+
+/* Define macro mask */
+constexpr mask_t DM_OK        = 0b0000'0000'0000'0001;
+constexpr mask_t DM_VAR       = 0b0000'0000'0000'0010;
+constexpr mask_t DM_PARAM     = 0b0000'0000'0000'0100;
+constexpr mask_t DM_RFP       = 0b0000'0000'0000'1000;
+constexpr mask_t DM_SUPERSANE = 0b0000'0000'0100'0000;
+constexpr mask_t DM_SANE      = 0b0000'0000'1000'0000;
+constexpr mask_t DM_ENVAR     = 0b0000'0001'0000'0000;
+constexpr mask_t DM_CONSTANT  = 0b1000'0000'0000'0000;
+
+void undef_name(const std::string_view &name);
+std::string expand(const std::string_view &mac, mask_t mask);
+std::string capexpand(const std::string_view &mac, mask_t mask, bool cap);
+int define(int argc, char **argv);
+void def_macro(const std::string_view &name, mask_t mask, const std::string_view &value);
+std::optional<std::reference_wrapper<macro_t>> find_macro(const std::string_view &name, mask_t mask);
+void undefine(mask_t mask);
+std::string conference(bool cap = false);
+inline std::string Conference(void) { return conference(true); }
+std::string fairwitness(bool cap = false);
+inline std::string Fairwitness(void) { return fairwitness(true); }
+std::string topic(bool cap = false);
+inline std::string Topic(void) { return topic(true); }
+std::string subject(bool cap = false);
+inline std::string Subject(void) { return subject(true); }
