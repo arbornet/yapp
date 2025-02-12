@@ -1,3 +1,6 @@
+// Copyright (c) YAPP contributors
+// SPDX-License-Identifier: MIT
+
 #pragma once
 
 /* The following 5 defines are all that you should need to configure the bbs

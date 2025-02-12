@@ -1,3 +1,6 @@
+// Copyright (c) YAPP contributors
+// SPDX-License-Identifier: MIT
+
 /* SYSOP.C - cfadm-only commands like cfcreate and cfdelete */
 
 #include <sys/stat.h>

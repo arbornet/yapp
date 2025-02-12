@@ -1,7 +1,8 @@
 #!/bin/sh
+# Copyright (c) YAPP contributors
+# SPDX-License-Identifier: MIT
 #
 # Installation script for YAPP 3.0
-# (c)1996 Armidale Software
 #
 # These files should have been untarred in /usr/bbs (or equivalent)
 # already.  This script should be run from there as cfadm.

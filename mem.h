@@ -1,3 +1,6 @@
+// Copyright (c) YAPP contributors
+// SPDX-License-Identifier: MIT
+
 #pragma once
 
 #include <stddef.h>

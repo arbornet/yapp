@@ -1,3 +1,6 @@
+// Copyright (c) YAPP contributors
+// SPDX-License-Identifier: MIT
+
 #include "item.h"
 
 #include <sys/stat.h>

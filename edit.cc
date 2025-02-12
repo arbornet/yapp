@@ -1,3 +1,6 @@
+// Copyright (c) YAPP contributors
+// SPDX-License-Identifier: MIT
+
 /* Routines for dealing with editing responses and subjects */
 
 /*

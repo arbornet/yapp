@@ -1,3 +1,6 @@
+// Copyright (c) YAPP contributors
+// SPDX-License-Identifier: MIT
+
 /*
  * HTML sanity filter
  * Phase 1: map < > & " to escape sequences

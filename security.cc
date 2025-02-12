@@ -1,3 +1,6 @@
+// Copyright (c) YAPP contributors
+// SPDX-License-Identifier: MIT
+
 /*
  * Implements conference security with
  *  [rwca] [+-][all f:ulist f:observers fwlist originlist password sysop]

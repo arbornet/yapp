@@ -1,3 +1,6 @@
+// Copyright (c) YAPP contributors
+// SPDX-License-Identifier: MIT
+
 /* This module takes care of most of the fancy output, and allows
  * users and administrators to completely customize the output
  * of many functions.  A "separator" string is passed to confsep

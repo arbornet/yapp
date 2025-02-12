@@ -1,3 +1,6 @@
+// Copyright (c) YAPP contributors
+// SPDX-License-Identifier: MIT
+
 #include "driver.h"
 
 #include <sys/signal.h>

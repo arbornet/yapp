@@ -1,3 +1,6 @@
+// Copyright (c) YAPP contributors
+// SPDX-License-Identifier: MIT
+
 /* Define if crypt() only uses 8 bytes of the key */
 #define int_CRYPT 1
 
