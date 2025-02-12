@@ -1,3 +1,6 @@
+// Copyright (c) YAPP contributors
+// SPDX-License-Identifier: MIT
+
 // A basic `trie` class, keyed by string.
 // Supports Picospan/YAPP/Fronttalk-style abbreviations.
 

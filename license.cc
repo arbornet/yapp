@@ -1,3 +1,6 @@
+// Copyright (c) YAPP contributors
+// SPDX-License-Identifier: MIT
+
 /*
  * This module is the license server.  There is a license/ directory
  * under the BBSDIR which contains files which we lock.

@@ -1,5 +1,7 @@
-/*  (c)1997 Armidale Software     All Rights Reserved
- *
+// Copyright (c) YAPP contributors
+// SPDX-License-Identifier: MIT
+
+/*
  *  This program creates a web account from an existing Unix account.
  *  The user's web password is duplicated from the user's Unix password.
  *  This means that THIS PROGRAM MUST RUN SETUID ROOT or else it typically

@@ -1,3 +1,6 @@
+// Copyright (c) YAPP contributors
+// SPDX-License-Identifier: MIT
+
 /*
  *  SYSTEM.C - Dave Thaler 3/1/93
  * This file does secure replacements for popen and system calls

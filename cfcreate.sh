@@ -1,4 +1,6 @@
 #!/bin/sh
+# Copyright (c) YAPP contributors
+# SPDX-License-Identifier: MIT
 # $Id: cfcreate,v 1.1 1996/08/10 17:21:45 thaler Exp $
 # Locate yapp.conf
 ok=0

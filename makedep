@@ -1,4 +1,7 @@
 #!/bin/sh
+# Copyright (c) YAPP contributors
+# SPDX-License-Identifier: MIT
+
 dir=$1
 shift
 case "$dir" in

@@ -1,3 +1,6 @@
+// Copyright (c) YAPP contributors
+// SPDX-License-Identifier: MIT
+
 /*
  * mopen() flags: note that on some operating systems (e.g. Solaris),
  * the combination of O_R and O_LOCK is illegal, so don't do it!

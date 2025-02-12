@@ -1,3 +1,6 @@
+// Copyright (c) YAPP contributors
+// SPDX-License-Identifier: MIT
+
 /* STATS.C
  * This module will cache subjects and authors for items in conferences
  * Loading entries is delayed until reference time

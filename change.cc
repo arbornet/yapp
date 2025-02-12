@@ -1,3 +1,6 @@
+// Copyright (c) YAPP contributors
+// SPDX-License-Identifier: MIT
+
 /*
  * PHASE 1: Conference Subsystem
  *        Be able to enter/exit the program, and move between conferences
