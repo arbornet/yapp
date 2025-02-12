@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstring>
 #include <iostream>
 #include <iterator>
 #include <print>

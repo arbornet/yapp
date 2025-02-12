@@ -16,7 +16,7 @@
 #include <sys/wait.h>
 
 #include <fcntl.h>
-#include <ndbm.h>
+#include <gdbm.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -725,17 +725,18 @@ edit(const std::string &dir, const std::string &file, bool visual)
 int
 ssave_dbm(const std::string &userfile, const std::string_view &key, const std::string_view &value)
 {
-	DBM *db = dbm_open(userfile.c_str(), O_RDWR | O_CREAT, 0644);
+	const auto flags = GDBM_READER|GDBM_WRITER|GDBM_WRCREAT;
+	auto db = gdbm_open(userfile.c_str(), 0, flags, 0644, nullptr);
 	if (db == nullptr)
 		return 0;
 	datum dkey;
-	dkey.dptr = (void *)key.data();
+	dkey.dptr = (char *)key.data();
 	dkey.dsize = key.size();
 	datum dvalue;
-	dvalue.dptr = (void *)value.data();
+	dvalue.dptr = (char *)value.data();
 	dvalue.dsize = value.size();
-	dbm_store(db, dkey, dvalue, DBM_REPLACE);
-	dbm_close(db);
+	gdbm_store(db, dkey, dvalue, GDBM_REPLACE);
+	gdbm_close(db);
 	return 1;
 }
 
@@ -774,32 +775,36 @@ save_dbm(const std::string &userfile, const std::string_view &key, const std::st
 void
 dump_dbm(const std::string &userfile)
 {
-	DBM *db = dbm_open(userfile.c_str(), O_RDONLY, 0644);
+	auto db = gdbm_open(userfile.c_str(), 0, GDBM_READER, 0644, nullptr);
 	if (db == nullptr) {
 		perror(userfile.c_str());
 		return;
 	}
-	for (datum dkey = dbm_firstkey(db); dkey.dptr != NULL;
-	     dkey = dbm_nextkey(db)) {
-		datum dval = dbm_fetch(db, dkey);
+	datum dkey = gdbm_firstkey(db);
+	while (dkey.dptr != nullptr) {
+		datum dval = gdbm_fetch(db, dkey);
 		std::println("{:.{}}: {:.{}}",
 		    (const char *)dkey.dptr, dkey.dsize,
 		    (const char *)dval.dptr, dval.dsize);
+		datum next = gdbm_nextkey(db, dkey);
+		free(dkey.dptr);
+		dkey = next;
 	}
-	dbm_close(db);
+	gdbm_close(db);
 }
 
 static std::string
 sget_dbm(const std::string &userfile, const std::string_view &key)
 {
-	DBM *db = dbm_open(userfile.c_str(), O_RDWR, 0644);
+	const auto flags = GDBM_READER|GDBM_WRITER|GDBM_WRCREAT;
+	auto db = gdbm_open(userfile.c_str(), 0, flags, 0644, nullptr);
 	if (db == nullptr)
 		return "";
 	datum dkey;
-	dkey.dptr = (void *)key.data();
+	dkey.dptr = (char *)key.data();
 	dkey.dsize = key.size();
-	datum dvalue = dbm_fetch(db, dkey);
-	dbm_close(db);
+	datum dvalue = gdbm_fetch(db, dkey);
+	gdbm_close(db);
 	if (dvalue.dptr == nullptr)
 		return "";
 	std::string value((const char *)dvalue.dptr, dvalue.dsize);
