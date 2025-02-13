@@ -4,7 +4,6 @@
 #include "news.h"
 
 #include <sys/stat.h>
-#include <sys/dirent.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 

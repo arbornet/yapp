@@ -33,7 +33,7 @@ OBJS:=		$(SRCS:%.cc=%.o)
 all:		$(PROG) $(EXTRA_PROGS)
 
 $(PROG):	$(OBJS) GNUmakefile
-		$(CXX) $(CXXFLAGS) -o $(PROG) $(OBJS) $(LIBS)
+		$(CXX) $(CXXFLAGS) -o $(PROG) $(OBJS) $(LIBS) -lgdbm
 
 html_pager:	html_pager.o str.o
 		$(CXX) $(CXXFLAGS) -o $@ $^

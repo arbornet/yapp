@@ -3,7 +3,6 @@
 
 #include "sum.h"
 
-#include <sys/dirent.h>
 #include <sys/stat.h>
 
 #include <dirent.h>
