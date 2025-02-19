@@ -8,10 +8,10 @@
 #include <string_view>
 #include <vector>
 
+#include <stdint.h>
 #include <stdio.h>
 #include <sys/types.h>
 
-#include "trie.h"
 #include "yapp.h"
 
 /* Flag type */
