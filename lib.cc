@@ -17,6 +17,7 @@
 #include <cstring>
 #include <iostream>
 #include <iterator>
+#include <optional>
 #include <print>
 #include <ranges>
 #include <string>
@@ -173,280 +174,137 @@ more(const std::string_view &dir, const std::string_view &filename)
     return true;
 }
 
-static char *
-readaline(FILE *fp, char **strp)
+namespace {
+static bool
+readaline(FILE *fp, std::string &str)
 {
-    char *str;
-
+    char sbuf[MAX_LINE_LENGTH], *s;
     if (0 && fp == stdin) {
-        str = readline(NULL);
-        *strp = str;
-        if (str == NULL)
-            *strp = (char *)emalloz(MAX_LINE_LENGTH + 1);
-        return str;
+        s = readline(NULL);
     } else {
-        str = (char *)emalloz(MAX_LINE_LENGTH + 1);
-        *strp = str;
-        return fgets(str, MAX_LINE_LENGTH, fp);
+        s = fgets(sbuf, sizeof(sbuf), fp);
     }
-}
-
-/******************************************************************************/
-/* GET INPUT INTO ARBITRARILY SIZED BUFFER                                    */
-/* Also get multiple lines if a line ended with \                             */
-/******************************************************************************/
-/* ARGUMENTS:            */
-/* Input stream          */
-/* Min stdin level, 0 if not reading from stdin  */
-char *
-xgets(FILE *fp, int lvl)
-{
-    char *ok;
-    char *str;
-    int strsize;
-    int i, j, strip = 0;
-    char *tmp, *cp;
-    int done = 0, len;
-
-    if (!fp)
-        return NULL;
-
-    /* Initialize buffer */
-    len = strsize = MAX_LINE_LENGTH;
-
-    /* Loop over \-continued lines */
-    do {
-
-        /* If reading from command input, reset stuff */
-        if (fp == st_glob.inp) { /* st_glob.inp */
-            if (status & S_PAGER)
-                spclose(st_glob.outp);
-
-            /* Make SIGINT abort fgets() */
-            ints_on();
-        }
-
-        /* Get a line, (may be aborted by SIGINT) */
-        ok = readaline(fp, &str);
-        cp = str;
-
-        /* If command input, reset stuff */
-        if (fp == st_glob.inp) { /* st_glob.inp */
-
-            /* Stop SIGINT from aborting fgets() */
-            ints_off();
-
-            if (!ok) {
-                /* If reading from tty, just reset the EOF */
-                /* XXX this should only happen for KEYBOARD input, not xfile XXX
-                 */
-                if (isatty(fileno(st_glob.inp))) {
-                    /* mystdin */
-                    clearerr(fp);
-                    if (!(flags & O_QUIET))
-                        std::println("");
-                } else {
-
-                    /* Reading commands from a file */
-                    free(str);
-                    if (stdin_stack_top >
-                        0 + (orig_stdin[0].type == STD_SKIP)) {
-                        pop_stdin();
-                        if (stdin_stack_top >= lvl)
-                            return xgets(st_glob.inp, lvl);
-                    }
-                    return NULL;
-                }
-            }
-        }
-
-        /* If SIGINT seen when getting a command, return empty command
-         */
-        /* st_glob.inp */
-        if (!ok && (status & S_INT) && (fp == st_glob.inp)) {
-            /* for systems where interrupts abort fgets */
-            if (str == NULL)
-                str = estrdup("");
-            str[0] = '\0';
-            return str;
-        }
-
-        /* Strip other characters if needed */
-        /* st_glob.inp */
-        if (ok && fp == st_glob.inp && (flags & O_STRIP)) {
-            tmp = (char *)emalloz(strlen(cp) + 1);
-            for (i = j = 0; i < strlen(cp); i++) {
-                if (isprint(cp[i]) || isspace(cp[i]))
-                    tmp[j++] = cp[i];
-                else
-                    std::print("{} ^{}",
-                        (strip++) ? "" : "Stripping bad input:", cp[i] + 64);
-            }
-            if (strip)
-                std::println("");
-            tmp[j] = '\0';
-            strcpy(cp, tmp);
-            free(tmp);
-        }
-
-        /* If it ends with \\\n, delete both */
-        if (ok && strlen(cp) > 1 && cp[strlen(cp) - 1] == '\n' &&
-            cp[strlen(cp) - 2] == '\\') {
-            cp[strlen(cp) - 2] = '\0';
-        }
-
-        /* If newline read, trash it and mark as done */
-        if (ok && cp[0] && cp[strlen(cp) - 1] == '\n') {
-            cp[strlen(cp) - 1] = 0;
-            done = 1;
-        } else if (!ok) { /* EOF */
-            done = 1;
-        } else { /* continues on next line */
-            cp += strlen(cp);
-            len = strsize - (cp - str); /* space left */
-            if (len < 80) {
-                strsize += 256;
-                str = (char *)erealloc(str, strsize);
-                len += 256;
-                cp = str + strsize - len;
-            }
-            done = 0;
-        }
-    } while (!done);
-
-    if (ok)
-        return str;
-
-    free(str);
-    return NULL;
-}
-/******************************************************************************/
-/* GET INPUT WITHOUT OVERFLOWING BUFFER                                       */
-/* Also get multiple lines if a line ended with \                             */
-/******************************************************************************/
-char *
-oldngets(      /* ARGUMENTS:            */
-    char *str, /* Input buffer       */
-    FILE *fp   /* Input stream       */
-)
-{
-    char *ok;
-    int i, j, strip = 0;
-    char tmp[MAX_LINE_LENGTH], *cp = str;
-    int done = 0, len = MAX_LINE_LENGTH;
-    /* Loop over \-continued lines */
-    do {
-
-        /* If reading from command input, reset stuff */
-        if (fp == st_glob.inp) { /* st_glob.inp */
-            if (status & S_PAGER)
-                spclose(st_glob.outp);
-
-            /* Make INT abort fgets() */
-            ints_on();
-        }
-
-        /* Get a line, (may be aborted by SIGINT) */
-        if (!fp) {
-            str[0] = '\0';
-            return NULL;
-        } else
-            ok = fgets(cp, len, fp);
-
-        /* If command input, reset stuff */
-        if (fp == st_glob.inp) { /* st_glob.inp */
-
-            /* Stop INT from aborting fgets() */
-            ints_off();
-
-            if (!ok) {
-                /* If reading from tty, just reset the EOF */
-                /* XXX this should only happen for KEYBOARD
-                 * input, not xfile XXX */
-                if (fp == st_glob.inp && !(status & S_BATCH)) { /* mystdin */
-                    clearerr(fp);
-                    if (!(flags & O_QUIET))
-                        std::println("");
-                } else {
-                    /* we might want the old stuff below,
-                     * and here's why: when your .cfrc
-                     * contains "r" and there's new stuff,
-                     * you got in 2.3 a message saying
-                     * "Tried to close unopened file"
-                     * because of the mclose below. However,
-                     * the ngets allowed control to flow
-                     * from a script to stdin easily, so you
-                     * wouldn't get a Stopping message.
-                     * Turns out this is extremely
-                     * problematic and not really necessary.
-                     * Basically, you want to return all the
-                     * way up to source() to close the file,
-                     * and Stopping is generated way down
-                     * inside, in a get_command() in item.c
-                     */
-
-                    /* Reading commands from a file */
-                    if (stdin_stack_top >
-                        0 + (orig_stdin[0].type == STD_SKIP)) {
-                        pop_stdin();
-                        return oldngets(str, st_glob.inp);
-                    } else {
-                        return NULL;
-                    }
-                }
-            }
-        }
-
-        /* If SIGINT seen when getting a command, return empty command
-         */
-        if (ok)
-            cp[strlen(cp) - 1] = 0;                         /* trash newline */
-        else if ((status & S_INT) && (fp == st_glob.inp)) { /* st_glob.inp
-                                                             */
-            /* for systems where interrupts abort fgets */
-            str[0] = '\0';
-            return str;
-        }
-
-        /* Strip characters if needed */
-        if ((fp == st_glob.inp) && (flags & O_STRIP)) { /* st_glob.inp */
-            for (i = j = 0; i < strlen(cp); i++) {
-                if (isprint(cp[i]) || isspace(cp[i]))
-                    tmp[j++] = cp[i];
-                else {
-                    std::print("{} ^{}",
-                        (strip++) ? "" : "Stripping bad input:", cp[i] + 64);
-                }
-            }
-            if (strip)
-                std::println("");
-            tmp[j] = '\0';
-            strcpy(cp, tmp);
-        }
-
-        /* Check if continues on next line */
-        done = 1;
-        if (cp[0] && cp[strlen(cp) - 1] == '\\') {
-            cp += strlen(cp) - 1;
-            len = MAX_LINE_LENGTH - (cp - str); /* space left */
-            if (len > 1)
-                done = 0;
-        }
-    } while (!done);
-
-    return (ok) ? str : NULL;
-}
-
-bool
-ngets(std::string &str, FILE *fp)
-{
-    char buf[MAX_LINE_LENGTH];
-    auto p = oldngets(buf, fp);
-    if (p == nullptr) {
+    if (s == nullptr) {
         str.clear();
         return false;
     }
-    str = p;
+    str = s;
+    if (0 && fp == stdin)
+        free(s);
+    return true;
+}
+
+void
+prepare_input_state(FILE *fp)
+{
+    // If reading from command input, reset stuff
+    if (fp == st_glob.inp) {
+        if ((status & S_PAGER) != 0)
+            spclose(st_glob.outp);
+        // Make SIGINT abort readaline()
+        ints_on();
+    }
+}
+
+void
+restore_input_state(FILE *fp, bool ok)
+{
+    // If command input, reset stuff
+    // Stop SIGINT from aborting fgets()/readline()
+    if (fp == st_glob.inp) {
+        ints_off();
+        // If reading from tty, just reset the EOF
+        // XXX this should only happen for KEYBOARD input, not xfile
+        if (!ok && isatty(fileno(st_glob.inp))) {
+            clearerr(fp); // mystdin
+            if (!(flags & O_QUIET))
+                std::println("");
+        }
+    }
+}
+
+}  // anonymous namespace
+
+// GET INPUT INTO ARBITRARILY SIZED BUFFER
+// Handle continued lines (those that end with '\').
+//
+// ARGUMENTS:
+// Input stream
+// Min stdin level, 0 if not reading from stdin
+std::optional<std::string>
+xgets(FILE *fp, int lvl)
+{
+    if (fp == nullptr)
+        return {};
+    // Loop over input, accummulating \-continued lines
+    std::string out;
+    for (;;) {
+        prepare_input_state(fp);
+        /* Get a line, (may be aborted by SIGINT) */
+        std::string str;
+        auto ok = readaline(fp, str);
+        restore_input_state(fp, ok);
+
+        // If SIGINT seen when getting a command, return empty command,
+        if ((status & S_INT) != 0 && fp == st_glob.inp)
+            return "";
+        if (!ok) {
+            // for systems where interrupts abort fgets
+            // Reading commands from a file
+            if (stdin_stack_top > 0 + (orig_stdin[0].type == STD_SKIP)) {
+                pop_stdin();
+                if (stdin_stack_top >= lvl)
+                    return xgets(st_glob.inp, lvl);
+            }
+            return {};
+        }
+        out.append(str);
+        // If it ends with \\\n, delete both
+        if (out.ends_with("\\\n")) {
+            out.pop_back();
+            out.pop_back();
+        }
+        // If newline read, trash it and mark as done
+        if (out.ends_with('\n'))  {
+            out.pop_back();
+            break;
+        }
+    }
+    // Strip non-printing characters if needed
+    if (fp == st_glob.inp && (flags & O_STRIP) != 0) {
+        size_t strip = 0;
+        std::erase_if(out,
+            [&](auto c) {
+                auto keep = isprint(c) || isspace(c);
+                if (!keep) {
+                    if (strip++ == 0)
+                        std::print("Stripping bad input:");
+                    if (iscntrl(c))
+                        std::print(" ^{:c}", c + 64);
+                    else
+                        std::print(" 0x{:02x}", c);
+                }
+                return !keep;
+            });
+        if (strip)
+            std::println("");
+    }
+    return out;
+}
+
+// Similar to xgets, above, but returns a boolean
+// indicating whether or not a line was read.
+// Does not care whether it's reading from stdin
+// or not.
+bool
+ngets(std::string &str, FILE *fp)
+{
+    auto xstr = xgets(fp, -1);
+    if (!xstr) {
+        str.clear();
+        return false;
+    }
+    str = *xstr;
     return true;
 }
 
@@ -490,11 +348,11 @@ grab_file(
             lines.push_back(word);
         }
     } else {
-        char *line = NULL; /* normal files */
-        while ((line = xgets(fp, 0)) != NULL) {
+        std::optional<std::string> str;
+        while ((str = xgets(fp, 0))) {
+            const auto &line = *str;
             if (line[0] != '#' || (flags & GF_IGNCMT) == 0)
                 lines.push_back(line);
-            free(line);
         }
     }
     mclose(fp);
@@ -516,9 +374,9 @@ grab_more(FILE *fp, const char *end, size_t *endlen)
     std::vector<std::string> lines;
     if (endlen != NULL)
         *endlen = 0;
-    for (char *large = nullptr; (large = xgets(fp, 0)) != nullptr;) {
-        std::string line(large);
-        free(large);
+    std::optional<std::string> large;
+    while ((large = xgets(fp, 0))) {
+        auto &line = *large;
         if (end != nullptr && line[0] == end[0] && line[1] == end[0])
             line.erase(0, 2);
         if ((end != nullptr && line.starts_with(end)) ||
@@ -541,22 +399,22 @@ grab_more(FILE *fp, const char *end, size_t *endlen)
 bool
 get_yes(const std::string_view &prompt, bool dflt)
 {
-    char buff[MAX_LINE_LENGTH], *p = buff;
+    std::string s;
 
     for (;;) {
         if ((flags & O_QUIET) == 0)
             wputs(prompt);
-        if (!oldngets(buff, st_glob.inp)) /* st_glob.inp */
+        if (!ngets(s, st_glob.inp)) /* st_glob.inp */
             return dflt;
 
         /* Skip leading whitespace */
-        while (isspace(*p)) p++;
+        str::trim(s);
 
-        if (match(p, "n_on") || match(p, "nop_e"))
+        if (match(s, "n_on") || match(s, "nop_e"))
             return 0;
-        if (match(p, "y_es") || match(p, "ok"))
+        if (match(s, "y_es") || match(s, "ok"))
             return 1;
-        std::println("\"{}\" is invalid.  Try yes or no.", p);
+        std::println("\"{}\" is invalid.  Try yes or no.", s);
     }
 }
 
@@ -761,7 +619,6 @@ get_date(time_t t, int style)
 }
 /******************************************************************************/
 /* GENERATE STRING WITHOUT ANY "'_s IN IT                                     */
-/* the value returned needs to be free'd by a call to frr                     */
 /******************************************************************************/
 std::string
 noquote(const std::string_view &str)

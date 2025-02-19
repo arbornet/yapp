@@ -70,6 +70,24 @@ reload_conflist(void)
     if (defidx < 0)
         std::println("Warning: bad default {}", conference());
 }
+
+namespace {
+// Possibly print a prompt, read a string, and return
+// whether a string was read.
+bool
+getstr(const std::string_view &prompt, std::string &val)
+{
+    if ((flags & O_QUIET) != 0) {
+        std::print("{}", prompt);
+        std::fflush(stdout);
+    }
+    auto tok = xgets(st_glob.inp, 0);
+    if (!tok || tok->empty())
+        return false;
+    val = *tok;
+    return true;
+}
+}  // anonymous namespace
 /******************************************************************************/
 /* CREATE A CONFERENCE                                                        */
 /******************************************************************************/
@@ -79,94 +97,49 @@ cfcreate(       /* ARGUMENTS:             */
     char **argv /* Argument list       */
 )
 {
-    char *cfshort = NULL, *cflong = NULL, *cfemail = NULL, *cfsubdir = NULL,
-         *cftype = NULL, *cfhosts = NULL;
-    int ok = 1, chacl, previdx;
+    std::string cfshort, cflong, cfemail, cfsubdir, cftype, cfhosts;
+    const auto quiet = (flags & O_QUIET) != 0;
+    bool ok = true, chacl;
+    int previdx;
 
     if (!is_sysop(0))
         return 1;
 
-    const bool prompt = (flags & O_QUIET) == 0;
     /* Get configuration information */
-    if (prompt) {
-        std::print("Short name (including underlines): ");
-        std::fflush(stdout);
-    }
-    cfshort = xgets(st_glob.inp, 0);
-    if (!cfshort || !cfshort[0])
-        ok = 0;
-
-    if (ok) {
-        if (prompt) {
-            std::println("Enter one-line description");
-            std::print("> ");
-            std::fflush(stdout);
-        }
-        cflong = xgets(st_glob.inp, 0);
-        if (!cflong || !cflong[0])
-            ok = 0;
-    }
+    ok = getstr("Short name (including underlines): ", cfshort);
+    ok = ok && getstr("Enter one-line descirption\n> ", cflong);
     std::string confdir, cfpath;
     if (ok) {
-        if (prompt) {
-            std::println("Subdirectory [{}]: ", compress(cfshort));
-            std::fflush(stdout);
-        }
-        cfsubdir = xgets(st_glob.inp, 0);
-        if (!cfsubdir[0]) {
-            free(cfsubdir);
-            cfsubdir = estrdup(compress(cfshort).c_str());
-        }
+        const auto prompt = "Subdirectory [" + compress(cfshort) + "]: ";
+        if (!getstr(prompt, cfsubdir))
+            cfsubdir = cfshort;
         confdir = str::concat({get_conf_param("bbsdir", BBSDIR), "/confs"});
         cfpath = str::join("/", {get_conf_param("confdir", confdir), cfsubdir});
-
-        if (!cfsubdir || !cfsubdir[0])
-            ok = 0;
     }
-    if (ok) {
-        if (prompt) {
-            std::print("Fairwitnesses: ");
-            std::fflush(stdout);
-        }
-        cfhosts = xgets(st_glob.inp, 0);
-        if (!cfhosts || !cfhosts[0])
-            ok = 0;
-    }
-    if (ok) {
-        if (prompt) {
-            std::print("Security type: ");
-            std::fflush(stdout);
-        }
-        cftype = xgets(st_glob.inp, 0);
-        if (!cftype || !cftype[0])
-            ok = 0;
-    }
+    ok = ok && getstr("Fairwitnesses: ", cfhosts);
+    ok = ok && getstr("Security type: ", cftype);
     if (ok) {
         const auto prompt = std::format(
             "Let a {} change the access control list? ", fairwitness());
         chacl = get_yes(prompt, true);
     }
     if (ok) {
-        if (prompt) {
-            std::println("Email address(es) (only used for mail type {}s): ",
+        const auto prompt =
+            std::format("Email address(es) (only used for mail type {}s): ",
                 conference());
-            std::fflush(stdout);
-        }
-        cfemail = xgets(st_glob.inp, 0);
-        if (!cfemail)
-            ok = 0;
+        ok = getstr(prompt, cfemail);
     }
 
     /* Create the conference */
     if (ok) {
-        if (prompt)
+        if (!quiet)
             std::println("Creating conflist entry...");
         const auto path = str::concat({bbsdir, "/conflist"});
         const auto content = std::format("{}:{}\n", cfshort, cfpath);
         ok = write_file(path, content);
     }
     if (ok) {
-        if ((flags & O_QUIET) == 0)
+        if (!quiet)
             std::println("Creating desclist entry...");
         const auto path = str::concat({bbsdir, "/desclist"});
         const auto content = std::format("{}:{}\n", compress(cfshort), cflong);
@@ -174,7 +147,7 @@ cfcreate(       /* ARGUMENTS:             */
     }
     if (ok && cfemail[0]) {
         const auto emails = str::split(cfemail, " ");
-        if ((flags & O_QUIET) == 0)
+        if (!quiet)
             std::println("Creating maillist entry...");
         /* create maillist entry */
         const auto path = str::concat({bbsdir, "/maillist"});
@@ -186,12 +159,12 @@ cfcreate(       /* ARGUMENTS:             */
         }
     }
     if (ok) {
-        if (prompt)
+        if (!quiet)
             std::println("Creating directory...");
         mkdir_all(cfpath, 0755);
     }
     if (ok) {
-        if (prompt)
+        if (!quiet)
             std::println("Creating config file...");
         const auto path =
             str::concat({cfpath, "/config"}); /* create config file */
@@ -201,7 +174,7 @@ cfcreate(       /* ARGUMENTS:             */
         chmod(path.c_str(), 0644);
     }
     if (ok) {
-        if (prompt)
+        if (!quiet)
             std::println("Creating login file...");
         const auto path =
             str::concat({cfpath, "/login"}); /* create login file */
@@ -212,7 +185,7 @@ cfcreate(       /* ARGUMENTS:             */
         chmod(path.c_str(), 0644);
     }
     if (ok) {
-        if (!(flags & O_QUIET))
+        if (!quiet)
             std::println("Creating logout file...");
         const auto path =
             str::concat({cfpath, "/logout"}); /* create logout file */
@@ -231,7 +204,7 @@ cfcreate(       /* ARGUMENTS:             */
     load_acl(confidx); /* load acl for new conference */
 
     if (ok) {
-        if (!(flags & O_QUIET))
+        if (!quiet)
             std::println("Creating acl file...");
         const auto path = str::concat({cfpath, "/acl"}); /* create acl file */
         std::string content;
@@ -244,14 +217,6 @@ cfcreate(       /* ARGUMENTS:             */
     }
     /* Restore original conference index */
     confidx = previdx;
-
-    /* Free up space */
-    free(cfshort);
-    free(cflong);
-    free(cfemail);
-    free(cfsubdir);
-    free(cftype);
-    free(cfhosts);
 
     custom_log("cfcreate", M_OK);
 
@@ -268,7 +233,7 @@ cfdelete(       /* ARGUMENTS:             */
     char **argv /* Argument list       */
 )
 {
-    char *cfshort;
+    std::string cfshort;
     sumentry_t fr_sum[MAX_ITEMS];
     status_t fr_st;
     partentry_t part2[MAX_ITEMS];
@@ -279,20 +244,22 @@ cfdelete(       /* ARGUMENTS:             */
     if (!is_sysop(0))
         return 1;
 
+    const auto quiet = (flags & O_QUIET) != 0;
+
     /* If no conference was specified, prompt for one */
     if (argc > 1)
         cfshort = argv[1];
     else {
-        if (!(flags & O_QUIET)) {
+        if (!quiet) {
             std::print("Short name (including underlines): ");
             std::fflush(stdout);
         }
-        cfshort = xgets(st_glob.inp, 0);
+        auto tok = xgets(st_glob.inp, 0);
+        if (tok)
+            cfshort = *tok;
     }
 
     idx = get_idx(cfshort, conflist);
-    if (argc < 2)
-        free(cfshort);
     if (idx < 0) {
         std::println("Cannot access {} {}.", conference(), cfshort);
         return 1;
@@ -307,7 +274,7 @@ cfdelete(       /* ARGUMENTS:             */
 
     /* Leave conference if we're in it now */
     if (confidx >= 0 && confidx == idx) {
-        if (!(flags & O_QUIET))
+        if (!quiet)
             std::println("Leaving {}...", conference());
         leave(0, (char **)0);
     }
@@ -332,7 +299,7 @@ cfdelete(       /* ARGUMENTS:             */
 
     /* If we're using cfadm-owned participation files, delete them */
     if ((perm = partfile_perm()) == SL_OWNER) {
-        if (!(flags & O_QUIET))
+        if (!quiet)
             std::println("Removing members' participation files...");
         const auto config = get_config(idx);
         if (config.size() > CF_PARTFILE) {
@@ -362,7 +329,7 @@ cfdelete(       /* ARGUMENTS:             */
     }
 
     /* Remove conflist entries */
-    if (!(flags & O_QUIET))
+    if (!quiet)
         std::println("Removing conflist entries...");
     const auto path = str::concat({bbsdir, "/conflist"});
     if ((fp = mopen(path, O_W)) != NULL) {
@@ -377,7 +344,7 @@ cfdelete(       /* ARGUMENTS:             */
     }
 
     /* Remove desclist entry */
-    if (!(flags & O_QUIET))
+    if (!quiet)
         std::println("Removing desclist entry...");
     const auto descpath = str::concat({bbsdir, "/desclist"});
     if ((fp = mopen(descpath, O_W)) != NULL) {
@@ -391,7 +358,7 @@ cfdelete(       /* ARGUMENTS:             */
     }
 
     /* Delete the whole subdirectory */
-    if (!(flags & O_QUIET))
+    if (!quiet)
         std::println("Removing directory...");
     const auto cmd = std::format("rm -rf {}", conflist[idx].location);
     system(cmd.c_str());

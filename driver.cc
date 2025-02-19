@@ -53,6 +53,7 @@ flag_t flags = 0;          // user settable parameter flags
 unsigned char mode = M_OK; // input mode (which prompt)
 flag_t status = 0;         // system status flags
 flag_t debug = 0;          // debug flags
+bool ignoreeof = false;    // Ignore end-of-file for TTY.
 
 // Conference info
 int current = -1; // current index to cflist
@@ -249,15 +250,14 @@ print_prompt(int mod)
 bool
 get_command(const std::string_view &def, int lvl)
 {
-    char *inbuff, *inb;
-    bool ok = true;
-
     status &= ~S_INT; /* Clear interrupt */
     if (status & S_PAGER)
         spclose(st_glob.outp);
 
-    inbuff = cmdbuf;
-    if (inbuff == NULL) {
+    std::string inbuff;
+    if (cmdbuf != NULL)
+        inbuff = cmdbuf;
+    if (cmdbuf == NULL) {
         int c;
         /* Pop up stdin stack until we're not sitting at EOF */
         while (orig_stdin[stdin_stack_top].type != STD_TTY &&
@@ -267,9 +267,8 @@ get_command(const std::string_view &def, int lvl)
         if (orig_stdin[stdin_stack_top].type != STD_TTY && c != EOF)
             ungetc(c, st_glob.inp);
 
-        if (stdin_stack_top < lvl) {
+        if (stdin_stack_top < lvl)
             return 0;
-        }
 
         /* If taking input from the keyboard, print a prompt */
         if (isatty(fileno(st_glob.inp)))
@@ -277,30 +276,27 @@ get_command(const std::string_view &def, int lvl)
 
         if (mode == M_OK)
             status &= ~S_STOP;
-        inbuff = xgets(st_glob.inp, lvl);
-        ok = inbuff != NULL;
-        if (ok && orig_stdin[stdin_stack_top].type != STD_TTY &&
-            (flags & O_VERBOSE)) {
-            std::println("command: {}", inbuff);
-            fflush(stdout);
+        auto line = xgets(st_glob.inp, lvl);
+        if (!line) {  // EOF
+            if (!isatty(fileno(st_glob.inp)) || !ignoreeof)
+                return false;
+        } else {
+            inbuff = *line;
+            if (orig_stdin[stdin_stack_top].type != STD_TTY && (flags & O_VERBOSE)) {
+                std::println("command: {}", inbuff);
+                fflush(stdout);
+            }
         }
     }
-    if (cmdbuf != NULL || ok) {
-        /* Strip leading & trailing spaces */
-        inb = trim(inbuff);
-
-        /* ignore blank lines in batch mode */
-        if (*inb == '\0') {
-            if ((status & S_BATCH) != 0)
-                ok = true;
-            else
-                ok = command(std::string(def), 0);
-        } else
-            ok = command(inb, 0);
+    // Strip leading & trailing spaces
+    str::trim(inbuff);
+    if (inbuff.empty()) {
+        // ignore blank lines in batch mode
+        if ((status & S_BATCH) != 0)
+            return true;
+        return command(std::string(def), 0);
     }
-    free(inbuff);
-
-    return ok;
+    return command(inbuff, 0);
 }
 
 // Clean up memory and exit.  Takes exit status.
@@ -437,10 +433,10 @@ init(int argc, char **argv)
     if (hostname.find('.') == std::string::npos) {
         FILE *fp;
         if ((fp = fopen("/etc/resolv.conf", "r")) != NULL) {
-            char *buff, field[80], value[80];
-            while ((buff = xgets(fp, 0)) != NULL) {
-                int nfields = sscanf(buff, "%s%s", field, value);
-                free(buff);
+            char field[80], value[80];
+            std::optional<std::string> buff;
+            while ((buff = xgets(fp, 0))) {
+                int nfields = sscanf(buff->c_str(), "%s%s", field, value);
                 if (nfields == 2 && str::eq(field, "domain")) {
                     hostname.append(".");
                     hostname.append(value);
@@ -1246,20 +1242,16 @@ command(const std::string &stro, int lvl)
             }
 
             if (op & OP_WORDIN) { /* << word */
-                char *buff = NULL;
                 /* Save lines in a temp file until we
                  * see word or EOF */
                 wordfile = std::format("/tmp/word.{}", getpid());
                 FILE *fp = smopenw(wordfile, O_W);
-                while ((buff = xgets(st_glob.inp, stdin_stack_top)) != NULL) {
-                    if (str::eq(buff, word))
+                std::optional<std::string> buff;
+                while ((buff = xgets(st_glob.inp, stdin_stack_top))) {
+                    if (str::eq(*buff, word))
                         break;
-                    std::println(fp, "{}", buff);
-                    free(buff);
-                    buff = NULL;
+                    std::println(fp, "{}", *buff);
                 }
-                if (buff)
-                    free(buff);
                 smclose(fp);
 
                 filename = wordfile;
@@ -1480,8 +1472,8 @@ handle_int(int sig) /* ARGUMENTS: (none)  */
     (void)sig;
     if (!(status & S_PIPE)) {
         std::println("Interrupt!");
-        status |= S_INT;
     }
+    status |= S_INT;
     signal(SIGINT, handle_int);
 }
 /******************************************************************************/

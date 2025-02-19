@@ -17,6 +17,7 @@ extern flag_t flags;
 extern unsigned char mode;
 extern flag_t status;
 extern flag_t debug;
+extern bool ignoreeof;
 extern stdin_t saved_stdin[STDIN_STACK_SIZE];
 extern stdin_t orig_stdin[STDIN_STACK_SIZE];
 extern int stdin_stack_top;

@@ -34,14 +34,6 @@ emalloc(const size_t size)
 }
 
 void *
-emalloz(const size_t size)
-{
-    void *ptr = emalloc(size);
-    memset(ptr, 0, size);
-    return ptr;
-}
-
-void *
 erealloc(void *ptr, size_t size)
 {
     if (size == 0) {

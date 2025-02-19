@@ -144,9 +144,9 @@ change(int argc, char **argv)
             priv_edit(file, "", 0);
             return 1;
         } else if (match(argv[j], "ig_noreeof")) {
-            unix_cmd("/bin/stty eof ^-");
+            ignoreeof = true;
         } else if (match(argv[j], "noig_noreeof")) {
-            unix_cmd("/bin/stty eof ^D");
+            ignoreeof = false;
         } else if (match(argv[j], "ch_at")) {
             unix_cmd("mesg y");
         } else if (match(argv[j], "noch_at")) {

@@ -5,6 +5,7 @@
 
 #include <cstdio>
 #include <ctime>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -31,7 +32,7 @@ bool cat(const std::string_view &dir, const std::string_view &file);
 std::vector<std::string> grab_file(const std::string_view &dir, const std::string_view &file, int flags);
 std::vector<std::string> grab_more(FILE *fp, const char *end, size_t *endlen);
 bool ngets(std::string &str, FILE *fp);
-char *xgets(FILE *fp, int lvl);
+std::optional<std::string> xgets(FILE *fp, int lvl);
 std::vector<assoc_t> grab_list(const std::string_view &dir, const std::string_view &file, int flags);
 std::size_t get_idx(const std::string_view &elt, const std::vector<assoc_t> &list);
 const assoc_t *assoc_list_find(const std::vector<assoc_t> &vec, const std::string &key);

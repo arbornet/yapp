@@ -767,10 +767,9 @@ email_password(const char *pass)
         error("opening ", filein);
         return 0;
     }
-    char *str;
-    while ((str = xgets(fin, stdin_stack_top)) != NULL) {
-        fitemsep(fout, str, 0);
-        free(str);
+    std::optional<std::string> str;
+    while ((str = xgets(fin, stdin_stack_top))) {
+        fitemsep(fout, *str, 0);
     }
     mclose(fin);
     mclose(fout);

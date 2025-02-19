@@ -148,46 +148,28 @@ misc_cmd_dispatch(/* ARGUMENTS:                 */
             unix_cmd(cmd);
         }
     } else if (argc) {
-        char *p;
-        /* Check for commands of the form:
-         * variable=value */
-        p = strchr(argv[0], '=');
-        if (p || (argc > 1 && argv[1][0] == '=')) {
-            char *val; /* Arbitrary length value */
-            int i, vallen;
-            /* Compute max vallen */
-            if (p) {
-                vallen = strlen(p + 1) + 1;
-                i = 1;
-            } else {
-                i = 2;
-                vallen = strlen(argv[1] + 1) + 1;
-            }
-            while (i < argc) {
-                if (vallen > 1)
-                    vallen++;
-                vallen += strlen(argv[i++]);
-            }
-
-            /* Compose val */
-            val = (char *)emalloc(vallen);
-            if (p) {
+        // Check for commands of the form:
+        // variable=value
+        char *p = strchr(argv[0], '=');
+        if (p != nullptr || (argc > 1 && argv[1][0] == '=')) {
+            std::string val;
+            int i;
+            if (p != nullptr) {
                 *p = '\0';
-                strcpy(val, p + 1);
+                val = p + 1;
                 i = 1;
             } else {
-                strcpy(val, argv[1] + 1);
+                val = argv[1] + 1;
                 i = 2;
             }
             while (i < argc) {
-                if (val[0])
-                    strcat(val, " ");
-                strcat(val, argv[i++]);
+                if (!val.empty())
+                    val.append(" ");
+                val.append(argv[i++]);
             }
 
             /* Execute command */
             def_macro(argv[0], DM_VAR, val);
-            free(val);
 
         } else {
             std::println("Invalid command: {}", argv[0]);
@@ -553,16 +535,16 @@ eval(           /* ARGUMENTS:             */
     st_glob.opt_flags = 0;
 
     if (argc < 2) {
-
+        std::optional<std::string> s;
         /* Read from stdin until EOF */
-        while ((str = xgets(st_glob.inp, stdin_stack_top)) != NULL) {
+        while ((s = xgets(st_glob.inp, stdin_stack_top))) {
+            const auto &str = *s;
             if (mode == M_OK || mode == M_JOQ)
                 confsep(str, confidx, &st_glob, part, 0);
             else if (mode == M_RFP || mode == M_EDB || mode == M_TEXT)
                 itemsep(str, 0);
             else
                 std::println("Unknown mode");
-            free(str);
         }
         if (debug & DB_IOREDIR)
             std::println("Detected end of eval input");
@@ -628,11 +610,9 @@ eval(           /* ARGUMENTS:             */
                     st_glob.r_first = rfirst;
 
                     if (match(argv[0], "evali_n")) {
-                        while ((str = xgets(st_glob.inp, stdin_stack_top)) !=
-                               NULL) {
-                            itemsep(str, 0);
-                            free(str);
-                        }
+                        std::optional<std::string> s;
+                        while ((s = xgets(st_glob.inp, stdin_stack_top)))
+                            itemsep(*s, 0);
                     } else
                         itemsep(str, 0);
                     shown++;
